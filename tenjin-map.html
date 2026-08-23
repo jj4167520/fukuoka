@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>天神・大名・警固 店舖地圖</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, 'Helvetica Neue', sans-serif; background: #f5f3ef; height: 100dvh; display: flex; flex-direction: column; }
+
+.header {
+  background: #1a1a2e;
+  color: white;
+  padding: 12px 16px;
+  flex-shrink: 0;
+}
+.header h1 { font-size: 15px; font-weight: 700; }
+.header p { font-size: 10px; color: #aaa; margin-top: 2px; }
+
+.filters {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  background: white;
+  border-bottom: 1px solid #e8e4de;
+  overflow-x: auto;
+  flex-shrink: 0;
+  -webkit-overflow-scrolling: touch;
+}
+.filter-btn {
+  white-space: nowrap;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1.5px solid #ddd;
+  background: white;
+  font-size: 11px;
+  font-weight: 600;
+  color: #555;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.filter-btn.active { background: #1a1a2e; border-color: #1a1a2e; color: white; }
+
+.map-area { flex: 1; position: relative; overflow: hidden; }
+
+#map-iframe {
+  width: 100%; height: 100%;
+  border: none;
+}
+
+/* Shop list panel */
+.shop-panel {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: white;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.12);
+  max-height: 45%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  
+  
+  z-index: 10;
+}
+
+
+.panel-handle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0ece6;
+  position: sticky;
+  top: 0;
+  background: white;
+  border-radius: 16px 16px 0 0;
+}
+.panel-handle::before {
+  content: '';
+  position: absolute;
+  top: 6px; left: 50%;
+  transform: translateX(-50%);
+  width: 36px; height: 4px;
+  background: #ddd;
+  border-radius: 2px;
+}
+.panel-title { font-size: 13px; font-weight: 700; color: #333; }
+.panel-count { font-size: 11px; color: #888; }
+
+.shop-list { padding: 0 12px 16px; }
+.shop-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 4px;
+  border-bottom: 1px solid #f5f2ee;
+  cursor: pointer;
+  text-decoration: none;
+}
+.shop-dot {
+  width: 10px; height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.shop-name { font-size: 13px; font-weight: 700; color: #222; flex: 1; }
+.shop-area { font-size: 10px; color: #888; white-space: nowrap; }
+.shop-arr { color: #ccc; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🗺 天神・大名・警固 店舖地圖</h1>
+  <p>點擊下方清單可跳到 Google Maps 導航</p>
+</div>
+
+<div class="filters">
+  <button class="filter-btn active" onclick="filterShops('all', this)">全部</button>
+  <button class="filter-btn" onclick="filterShops('street', this)">🔵 潮流</button>
+  <button class="filter-btn" onclick="filterShops('sports', this)">🔴 運動</button>
+  <button class="filter-btn" onclick="filterShops('vintage', this)">🟤 古著</button>
+  <button class="filter-btn" onclick="filterShops('dept', this)">🟣 百貨</button>
+  <button class="filter-btn" onclick="filterShops('misc', this)">🟢 其他</button>
+</div>
+
+<div class="map-area">
+  <iframe id="map-iframe"
+    src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d1641.8!2d130.3968!3d33.5878!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1szh-TW!2sjp!4v1234567890"
+    allowfullscreen loading="lazy">
+  </iframe>
+
+  <div class="shop-panel" id="shopPanel">
+    <div class="panel-handle" onclick="togglePanel()">
+      <span class="panel-title">📍 店舖清單</span>
+      <span class="panel-count" id="shopCount">25 間</span>
+    </div>
+    <div class="shop-list" id="shopList"></div>
+  </div>
+</div>
+
+<script>
+const shops = [
+  // 潮流
+  { name: 'HUMAN MADE', area: '大名', cat: 'street', color: '#3060d0', gmaps: 'https://maps.google.com/?q=HUMAN+MADE+FUKUOKA+大名2-1-13' },
+  { name: 'Supreme', area: '大名', cat: 'street', color: '#3060d0', gmaps: 'https://maps.google.com/?q=Supreme+福岡+大名1-15-35' },
+  { name: '#FR2', area: '大名', cat: 'street', color: '#3060d0', gmaps: 'https://maps.google.com/?q=FR2+FUKUOKA+大名1-1-3' },
+  { name: 'nanamica', area: '大名', cat: 'street', color: '#3060d0', gmaps: 'https://maps.google.com/?q=nanamica+FUKUOKA+大名2-1-14' },
+  { name: 'Hysteric Glamour', area: '大名', cat: 'street', color: '#3060d0', gmaps: 'https://maps.google.com/?q=Hysteric+Glamour+福岡+大名1-15-27' },
+  { name: 'THE CAP DAIMYO', area: '大名', cat: 'street', color: '#3060d0', gmaps: 'https://maps.google.com/?q=THE+CAP+DAIMYO+大名1-3-46' },
+  { name: 'MOMOTARO JEANS', area: '大名', cat: 'street', color: '#3060d0', gmaps: 'https://maps.google.com/?q=MOMOTARO+JEANS+FUKUOKA+大名1-5-2' },
+  { name: 'ZARA', area: '大名（天神西通り）', cat: 'street', color: '#3060d0', gmaps: 'https://maps.google.com/?q=ZARA+福岡天神西通り店+大名1-12-64' },
+  { name: 'Salon adam et ropé', area: '天神 PARCO 新館2F', cat: 'street', color: '#3060d0', gmaps: 'https://maps.google.com/?q=adam+et+rope+福岡PARCO' },
+  // 運動
+  { name: 'Nike Fukuoka Tenjin', area: 'ONE FUKUOKA 2F', cat: 'sports', color: '#e04010', gmaps: 'https://maps.google.com/?q=Nike+Fukuoka+Tenjin+ONE+FUKUOKA' },
+  { name: 'adidas Originals', area: '天神2丁目', cat: 'sports', color: '#e04010', gmaps: 'https://maps.google.com/?q=adidas+Originals+Shop+福岡+天神' },
+  { name: 'PUMA', area: '警固', cat: 'sports', color: '#e04010', gmaps: 'https://maps.google.com/?q=PUMA+STORE+FUKUOKA+警固' },
+  { name: 'White atelier CONVERSE', area: 'CAITAC SQUARE 1F', cat: 'sports', color: '#e04010', gmaps: 'https://maps.google.com/?q=White+atelier+BY+CONVERSE+福岡' },
+  // 古著
+  { name: 'Flamingo Fukuoka', area: '大名', cat: 'vintage', color: '#8a4a20', gmaps: 'https://maps.google.com/?q=Flamingo+Fukuoka+大名1-3-54' },
+  { name: 'JAM VINTAGE & SELECT', area: '大名', cat: 'vintage', color: '#8a4a20', gmaps: 'https://maps.google.com/?q=JAM+VINTAGE+SELECT+Fukuoka+大名2-9-5' },
+  { name: 'MANDARAKE', area: '大名', cat: 'vintage', color: '#8a4a20', gmaps: 'https://maps.google.com/?q=MANDARAKE+Fukuoka+大名2-9-5' },
+  // 百貨
+  { name: '天神 PARCO', area: '天神', cat: 'dept', color: '#8020a0', gmaps: 'https://maps.google.com/?q=福岡PARCO+天神2-11-1' },
+  { name: 'ONE FUKUOKA', area: '天神', cat: 'dept', color: '#8020a0', gmaps: 'https://maps.google.com/?q=ONE+FUKUOKA+天神1-11' },
+  { name: 'Mina 天神', area: '天神', cat: 'dept', color: '#8020a0', gmaps: 'https://maps.google.com/?q=ミーナ天神+天神4-3-8' },
+  { name: '大丸福岡天神店', area: '天神', cat: 'dept', color: '#8020a0', gmaps: 'https://maps.google.com/?q=大丸福岡天神店+天神1-4-1' },
+  { name: '岩田屋三越', area: '天神', cat: 'dept', color: '#8020a0', gmaps: 'https://maps.google.com/?q=岩田屋三越+天神2-5-35' },
+  // 其他
+  { name: 'Apple 福岡', area: '天神', cat: 'misc', color: '#208060', gmaps: 'https://maps.google.com/?q=Apple+福岡+天神2-5-19' },
+  { name: 'CAITAC SQUARE GARDEN', area: '警固', cat: 'misc', color: '#208060', gmaps: 'https://maps.google.com/?q=CAITAC+SQUARE+GARDEN+警固1-15-38' },
+  { name: 'Flying Tiger Copenhagen', area: 'CAITAC SQUARE 1F', cat: 'misc', color: '#208060', gmaps: 'https://maps.google.com/?q=Flying+Tiger+Copenhagen+福岡+警固' },
+  { name: '新天町商店街', area: '天神', cat: 'misc', color: '#208060', gmaps: 'https://maps.google.com/?q=新天町商店街+天神2-9' },
+];
+
+let currentFilter = 'all';
+let panelOpen = false;
+
+function renderList() {
+  const filtered = currentFilter === 'all' ? shops : shops.filter(s => s.cat === currentFilter);
+  document.getElementById('shopCount').textContent = filtered.length + ' 間';
+  const list = document.getElementById('shopList');
+  list.innerHTML = filtered.map(s => `
+    <a class="shop-item" href="${s.gmaps}" target="_blank">
+      <div class="shop-dot" style="background:${s.color}"></div>
+      <div class="shop-name">${s.name}</div>
+      <div class="shop-area">${s.area}</div>
+      <span class="shop-arr">›</span>
+    </a>
+  `).join('');
+}
+
+function filterShops(cat, btn) {
+  currentFilter = cat;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderList();
+}
+
+function togglePanel() { return; // disabled
+  panelOpen = !panelOpen;
+  document.getElementById('shopPanel').classList.toggle('open', panelOpen);
+}
+
+renderList();
+</script>
+</body>
+</html>
